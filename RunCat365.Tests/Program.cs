@@ -106,6 +106,22 @@ internal static class Program
         finally { Directory.Delete(folder, true); }
 
         ApplicationConfiguration.Initialize();
+        foreach (var dpi in new[] { 96, 144 })
+        {
+            var contentSize = new Size(352 * dpi / 96, 472 * dpi / 96);
+            using var shadow = DashboardShadow.Render(contentSize, dpi);
+            var maxAlpha = 0;
+            for (var y = 0; y < shadow.Height; y++)
+            for (var x = 0; x < shadow.Width; x++) maxAlpha = Math.Max(maxAlpha, shadow.GetPixel(x, y).A);
+            var margin = DashboardShadow.MarginSize * dpi / 96;
+            var center = shadow.Width / 2;
+            var bottom = margin + contentSize.Height;
+            Check(shadow.GetPixel(center, shadow.Height / 2).A == 0 && shadow.GetPixel(0, 0).A == 0,
+                $"shadow leaves content and outside corners transparent at {dpi} DPI");
+            Check(maxAlpha is > 0 and <= 40 && shadow.GetPixel(center, bottom + 2 * dpi / 96).A > shadow.GetPixel(center, bottom + 10 * dpi / 96).A,
+                $"shadow stays faint and fades outward at {dpi} DPI");
+            if (args.Length > 0) shadow.Save(Path.Combine(args[0], $"shadow-{dpi}.png"));
+        }
         var history = new SystemUsageHistory();
         var historyStart = DateTimeOffset.UtcNow.AddSeconds(-70);
         for (var index = 0; index <= 70; index++) history.Add(historyStart.AddSeconds(index), index, 90);
@@ -137,9 +153,28 @@ internal static class Program
             dashboard.Show();
             dashboard.Activate();
             dashboard.Refresh();
+            Check(dashboard.OwnedForms.OfType<DashboardShadow>().Any(shadow => shadow.Visible && !shadow.ShowInTaskbar && shadow.Bounds.Contains(dashboard.Bounds)),
+                $"native shadow follows visible {theme} dashboard");
+            var activeShadow = dashboard.OwnedForms.OfType<DashboardShadow>().Single();
+            var previousShadowLocation = activeShadow.Location;
+            dashboard.Location = new Point(dashboard.Left + 20, dashboard.Top + 20);
+            Check(activeShadow.Location == new Point(previousShadowLocation.X + 20, previousShadowLocation.Y + 20), $"shadow follows visible {theme} popup movement");
             using var bitmap = new Bitmap(dashboard.Width, dashboard.Height);
             dashboard.DrawToBitmap(bitmap, new Rectangle(Point.Empty, bitmap.Size));
             if (args.Length > 0) bitmap.Save(Path.Combine(args[0], "dashboard-" + theme + ".png"));
+            if (args.Length > 0)
+            {
+                using var shadow = DashboardShadow.Render(bitmap.Size, dashboard.DeviceDpi);
+                using var floating = new Bitmap(shadow.Width, shadow.Height);
+                using var graphics = Graphics.FromImage(floating);
+                graphics.Clear(Color.FromArgb(222, 226, 228));
+                graphics.DrawImageUnscaled(shadow, 0, 0);
+                var margin = (int)Math.Ceiling(DashboardShadow.MarginSize * dashboard.DeviceDpi / 96f);
+                using var outline = DashboardForm.Rounded(new RectangleF(margin, margin, bitmap.Width, bitmap.Height), 24 * dashboard.DeviceDpi / 96f);
+                graphics.SetClip(outline);
+                graphics.DrawImageUnscaled(bitmap, margin, margin);
+                floating.Save(Path.Combine(args[0], "dashboard-shadow-" + theme + ".png"));
+            }
             var headingsVisible = true;
             foreach (var text in new[] { "RunCat", "Codex", "CPU", "Memory" })
             {
@@ -179,6 +214,7 @@ internal static class Program
             if (args.Length > 0) bitmap.Save(Path.Combine(args[0], "dashboard-150.png"));
         }
         dashboard.Hide();
+        Check(dashboard.OwnedForms.All(form => !form.Visible), "hiding dashboard also hides its shadow");
         dashboard.Show();
         dashboard.Close();
         Check(!dashboard.Visible && !dashboard.IsDisposed, "closing the borderless popup hides it without exiting");
@@ -228,6 +264,9 @@ internal static class Program
             }
         }
         Check(Theme.System.GetLocalizedString() == "System" && Theme.Light.GetLocalizedString() == "Light" && Theme.Dark.GetLocalizedString() == "Dark", "theme menu labels remain distinct");
+        var ownedShadow = dashboard.OwnedForms.OfType<DashboardShadow>().Single();
+        dashboard.Dispose();
+        Check(ownedShadow.IsDisposed, "disposing dashboard releases shadow window");
         if (args.Contains("--local"))
         {
             var watch = Stopwatch.StartNew();

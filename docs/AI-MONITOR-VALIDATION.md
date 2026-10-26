@@ -29,7 +29,7 @@ $runcatDotnet = Join-Path $env:TEMP 'runcat-dotnet/dotnet.exe'
 
 ## Automated checks
 
-외부 테스트 프레임워크 없이 `RunCat365.Tests` 실행 파일이 실패 시 예외/비정상 종료 코드를 반환합니다. **52개 검사 통과**.
+외부 테스트 프레임워크 없이 `RunCat365.Tests` 실행 파일이 실패 시 예외/비정상 종료 코드를 반환합니다. **62개 검사 통과**.
 
 - 로컬에서 관측한 주간 `primary` 스키마, 주간 `secondary` 스키마.
 - 5시간 데이터 제외, 다른 `limit_id` 제외, null ID 호환.
@@ -89,11 +89,20 @@ UI 후속 변경: RunCat Neo의 `docs/images/en/system_metrics.jpg`, `custom_met
 - Removed `DashboardPreview.cs`, `preview.ps1`, the `--preview` entry point, and their tests at the user's request.
 - Frame-by-frame flicker, actual high-contrast switching, monitor/DPI transitions, and long-running behavior remain unverified. Game/thumbnail black recoloring was checked in code; automated pixel checks cover tray animation frames.
 
+## Subtle floating shadow follow-up
+
+- Replaced the old `CS_DROPSHADOW` hint with a small, click-through, non-activating layered window. The center is transparent so it cannot dim the dashboard. Existing corner geometry and content size are unchanged.
+- Shadow uses 13 low-alpha layers, a 12-DIP falloff, and a 3-DIP downward offset. Its bitmap is rebuilt only for size/DPI changes; metric refreshes do not repaint it. Hide/dispose follow the dashboard. High contrast suppresses it; native upload failure leaves the dashboard usable without the effect.
+- 62 checks pass, including 96/144-DPI alpha falloff and transparency, real layered-window creation, visible popup movement in both themes, hide, and disposal. An earlier movement check ran after the popup had deactivated/hidden; movement is now checked while visible. No shadow movement is needed while the popup is hidden.
+- `TestResults/dashboard-shadow-*.png` composites the same shadow bitmap and test dashboard on a neutral background for visual inspection. These are synthetic render checks, not desktop screenshots. Actual desktop composition, mouse pass-through, high-contrast switching, and cross-monitor DPI transitions still need manual verification.
+- Windows API reference: [UpdateLayeredWindow](https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-updatelayeredwindow).
+
 ## Changed files
 
 - `RunCat365/CodexUsageInfo.cs`: JSON 이벤트 검증, 주간 사용량/시간/신선도 모델.
 - `RunCat365/CodexUsageRepository.cs`: 로컬 파일 탐색, 제한된 tail 읽기, 변경 캐시, 오류 상태.
 - `RunCat365/DashboardForm.cs`: CPU/RAM/주간 Codex 카드, 테마, 팝업 위치 및 닫기 동작.
+- `RunCat365/DashboardShadow.cs`: translucent exterior shadow, native layer upload, and bitmap generation.
 - `RunCat365/SystemUsageHistory.cs`: 최근 60초 시스템 표본, 시간/개수 제한과 비정상 값 처리.
 - `RunCat365/EndlessGameForm.cs`: built-in game cat fixed to black.
 - `RunCat365/Program.cs`, `ContextMenuManager.cs`: 기존 애니메이션 유지, 15초 백그라운드 수집, 팝업 열기/정리.

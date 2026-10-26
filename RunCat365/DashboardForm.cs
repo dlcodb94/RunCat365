@@ -5,7 +5,7 @@ namespace RunCat365;
 
 internal sealed class DashboardForm : Form
 {
-    private const int DropShadowClassStyle = 0x00020000;
+    private DashboardShadow? shadow;
     private readonly SystemUsageHistory history = new();
     private readonly MetricCard cpuCard = new();
     private readonly MetricCard memoryCard = new();
@@ -212,6 +212,7 @@ internal sealed class DashboardForm : Form
             graph.Invalidate();
         }
         Invalidate(true);
+        UpdateShadow();
     }
 
     private static void SetContentBackground(Control control, Color color)
@@ -247,14 +248,31 @@ internal sealed class DashboardForm : Form
         note.ForeColor = updated.ForeColor = muted;
     }
 
-    protected override CreateParams CreateParams
+    private void UpdateShadow()
     {
-        get
+        if (!Visible || Disposing || IsDisposed || SystemInformation.HighContrast)
         {
-            var parameters = base.CreateParams;
-            parameters.ClassStyle |= DropShadowClassStyle;
-            return parameters;
+            shadow?.Hide();
+            return;
         }
+        shadow ??= new DashboardShadow();
+        if (shadow.Follow(this))
+        {
+            if (!shadow.Visible) shadow.Show(this);
+        }
+        else shadow.Hide();
+    }
+
+    protected override void OnVisibleChanged(EventArgs e)
+    {
+        base.OnVisibleChanged(e);
+        UpdateShadow();
+    }
+
+    protected override void OnLocationChanged(EventArgs e)
+    {
+        base.OnLocationChanged(e);
+        UpdateShadow();
     }
 
     protected override void OnSizeChanged(EventArgs e)
@@ -265,9 +283,10 @@ internal sealed class DashboardForm : Form
         var oldRegion = Region;
         Region = new Region(shape);
         oldRegion?.Dispose();
+        UpdateShadow();
     }
 
-    private static GraphicsPath Rounded(RectangleF bounds, float radius)
+    internal static GraphicsPath Rounded(RectangleF bounds, float radius)
     {
         var diameter = Math.Min(radius * 2, Math.Min(bounds.Width, bounds.Height));
         var path = new GraphicsPath();
@@ -281,7 +300,7 @@ internal sealed class DashboardForm : Form
 
     protected override void Dispose(bool disposing)
     {
-        if (disposing) toolTip.Dispose();
+        if (disposing) { shadow?.Dispose(); toolTip.Dispose(); }
         base.Dispose(disposing);
         if (disposing) { bodyFont.Dispose(); headingFont.Dispose(); valueFont.Dispose(); brandFont.Dispose(); }
     }

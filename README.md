@@ -25,6 +25,7 @@ dotnet publish RunCat365/RunCat365.csproj -c Release -p:Platform=x64 -r win-x64 
 - [Zajno의 BRIK 디자인](https://dribbble.com/shots/26817947-Mobile-App-Design-for-a-Brain-Health-Training-Platform)을 참고한 둥근 카드 UI입니다. 크림색/어두운 바탕, 짙은 청록색 카드, 라벤더색 수치와 분절형 사용량 막대를 사용합니다. Codex 7일 사용량 아래에 CPU·RAM 카드를 나란히 배치합니다. 상단 점 세 개는 기존 RunCat 메뉴를 엽니다. 참고 이미지나 원본 디자인 자산은 앱에 포함하지 않습니다.
 - CPU/RAM 그래프는 앱 실행 중 측정한 최근 60초만 표시합니다. 빈 구간이나 절전 후 공백은 보간하지 않으며 시작 전의 기록은 생성하지 않습니다. 메모리에 최대 61개 표본만 보관하고 디스크에는 저장하지 않습니다.
 - 기본 고양이는 테마와 관계없이 검은색입니다. 트레이 애니메이션, 메뉴 썸네일, 기본 게임의 고양이에 적용합니다. 대시보드 테마는 고양이 색에 영향을 주지 않습니다.
+- 팝업 바깥에는 약한 그림자를 표시합니다. 기존 둥근 모서리를 유지하며 그림자는 클릭이나 포커스를 가로채지 않습니다. 팝업과 함께 숨겨지고, 고대비 모드에서는 표시하지 않습니다.
 
 ## UI를 직접 수정하기
 
@@ -40,6 +41,7 @@ dotnet publish RunCat365/RunCat365.csproj -c Release -p:Platform=x64 -r win-x64 
 | 상세 수치·그래프 간격 | `MetricRow()`의 `RowStyles` |
 | 배경·테두리·글자·그래프 색 | `ApplyTheme()`의 `Color.FromArgb(...)` |
 | 둥근 모서리·카드 배경 | `Rounded()`, `MetricCard.OnPaintBackground()` |
+| 바깥 그림자 농도·퍼짐 | `DashboardShadow.Render()`의 알파 값 `3`, `spread` 범위, 아래쪽 이동 값 `3` |
 | 영문 문구 | `RunCat365/Properties/Strings.resx`의 `Dashboard_*` 항목 |
 | 앱 언어 | `Program.Main()`의 `defaultCultureInfo` |
 
