@@ -25,11 +25,7 @@ namespace RunCat365
         [STAThread]
         static void Main()
         {
-#if DEBUG
             var defaultCultureInfo = SupportedLanguage.English.GetDefaultCultureInfo();
-#else
-            var defaultCultureInfo = SupportedLanguageExtension.GetCurrentLanguage().GetDefaultCultureInfo();
-#endif
             CultureInfo.CurrentUICulture = defaultCultureInfo;
             CultureInfo.CurrentCulture = defaultCultureInfo;
 
@@ -65,6 +61,12 @@ namespace RunCat365
         private readonly ContextMenuManager contextMenuManager;
         private readonly FormsTimer fetchTimer;
         private readonly FormsTimer animateTimer;
+        private readonly CodexUsageRepository codexRepository = new();
+        private readonly FormsTimer codexTimer = new() { Interval = 15000 };
+        private readonly DashboardForm dashboard = new();
+        private CodexUsageState codexState = new(null, CodexReadStatus.NoUsage, null);
+        private bool isReadingCodex;
+        private bool isDisposed;
         private Runner runner = Runner.Cat;
         private Theme manualTheme = Theme.System;
         private TemperatureUnit temperatureUnit = TemperatureUnit.System;
@@ -118,9 +120,12 @@ namespace RunCat365
                 u => ChangeTemperatureUnit(u),
                 () => launchAtStartupManager.GetStartup(),
                 s => launchAtStartupManager.ToggleStartup(s),
+                () => ShowDashboard(),
                 () => OpenProjectPage(),
                 () => Application.Exit()
             );
+
+            dashboard.MenuRequested += point => contextMenuManager.ShowMenu(point);
 
             if (customRunnerName is not null)
             {
@@ -141,6 +146,10 @@ namespace RunCat365
             fetchTimer.Tick += new EventHandler(FetchTick);
             fetchTimer.Start();
 
+            codexTimer.Tick += RefreshCodex;
+            codexTimer.Start();
+            RefreshCodex(this, EventArgs.Empty);
+
             ShowBalloonTipIfNeeded();
         }
 
@@ -152,6 +161,33 @@ namespace RunCat365
             var value = rKey.GetValue("SystemUsesLightTheme");
             if (value is null) return Theme.Light;
             return (int)value == 0 ? Theme.Dark : Theme.Light;
+        }
+
+        private void ShowDashboard()
+        {
+            if (dashboard.Visible) { dashboard.Hide(); return; }
+            UpdateDashboard();
+            dashboard.ShowNearCursor();
+        }
+
+        private void UpdateDashboard()
+        {
+            dashboard.UpdateMetrics(cpuRepository.IsAvailable ? cpuRepository.Get() : null,
+                memoryRepository.Get(), codexState, manualTheme == Theme.System ? GetSystemTheme() : manualTheme);
+        }
+
+        private async void RefreshCodex(object? sender, EventArgs e)
+        {
+            if (isReadingCodex || isDisposed) return;
+            isReadingCodex = true;
+            try
+            {
+                await Task.Run(codexRepository.Update);
+                if (isDisposed) return;
+                codexState = codexRepository.State;
+                if (dashboard.Visible) UpdateDashboard();
+            }
+            finally { isReadingCodex = false; }
         }
 
         private bool IsSpeedSourceAvailable(SpeedSource speedSource)
@@ -345,24 +381,28 @@ namespace RunCat365
 
         private async void FetchTick(object? sender, EventArgs e)
         {
-            if (isFetching) return;
+            if (isFetching || isDisposed) return;
             isFetching = true;
             try
             {
                 var doHeavySlice = await Task.Run(() =>
                 {
                     cpuRepository.Update();
+                    memoryRepository.Update();
                     gpuRepository.Update();
                     fetchCounter += 1;
                     if (fetchCounter < FETCH_COUNTER_SIZE) return false;
                     fetchCounter = 0;
                     temperatureRepository.Update();
-                    memoryRepository.Update();
                     storageRepository.Update();
                     networkRepository.Update();
                     return true;
                 });
 
+                if (isDisposed) return;
+                dashboard.RecordSample(DateTimeOffset.UtcNow, cpuRepository.IsAvailable ? cpuRepository.Get().Total : null,
+                    memoryRepository.Get().TotalMemory > 0 ? memoryRepository.Get().MemoryLoad : null);
+                if (dashboard.Visible) UpdateDashboard();
                 if (!doHeavySlice) return;
 
                 var interval = FetchSystemInfo();
@@ -384,6 +424,10 @@ namespace RunCat365
         {
             if (disposing)
             {
+                isDisposed = true;
+                codexTimer.Stop();
+                codexTimer.Dispose();
+                dashboard.Dispose();
                 SystemEvents.UserPreferenceChanged -= UserPreferenceChanged;
 
                 animateTimer?.Stop();

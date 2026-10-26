@@ -300,4 +300,17 @@
   <data name="CustomRunner_PreviewSpeed" xml:space="preserve">
     <value>預覽速度:</value>
   </data>
+  <data name="Dashboard_NoUsage" xml:space="preserve"><value>No recorded weekly usage</value></data>
+  <data name="Dashboard_Updated" xml:space="preserve"><value>Last usage update</value></data>
+  <data name="Dashboard_Reset" xml:space="preserve"><value>Resets at</value></data>
+  <data name="Dashboard_Expired" xml:space="preserve"><value>Reset time passed · last recorded value</value></data>
+  <data name="Dashboard_Stale" xml:space="preserve"><value>Stale · last recorded value</value></data>
+  <data name="Dashboard_Ready" xml:space="preserve"><value>Local Codex sessions · refresh every 15s</value></data>
+  <data name="Dashboard_NoSessions" xml:space="preserve"><value>Codex sessions folder not found</value></data>
+  <data name="Dashboard_ReadError" xml:space="preserve"><value>Read failed · retained values may be stale</value></data>
+  <data name="Dashboard_Open" xml:space="preserve"><value>AI dashboard</value></data>
+  <data name="Dashboard_WeeklyPeriod" xml:space="preserve"><value>7 DAYS</value></data>
+  <data name="Dashboard_Menu" xml:space="preserve"><value>Menu</value></data>
+  <data name="Dashboard_Idle" xml:space="preserve"><value>Idle</value></data>
+  <data name="Dashboard_History" xml:space="preserve"><value>Measured CPU / RAM history · last 60 seconds</value></data>
 </root>

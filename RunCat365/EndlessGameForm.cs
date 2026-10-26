@@ -65,7 +65,7 @@ namespace RunCat365
                     {
                         if (entry.Value is Bitmap icon)
                         {
-                            catIcons.Add(key, systemTheme == Theme.Light ? new Bitmap(icon) : icon.Recolor(color));
+                            catIcons.Add(key, icon.Recolor(Color.Black));
                         }
                     }
                     else if (key.StartsWith("road"))

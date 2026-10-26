@@ -29,7 +29,9 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <InternalsVisibleTo Include="RunCat365.Tests" />
     <Content Include="resources\app_icon.ico" />
+    <EmbeddedResource Include="resources\chatgpt-white.png" LogicalName="RunCat365.CodexIcon" />
   </ItemGroup>
 
   <ItemGroup>

@@ -47,6 +47,7 @@ namespace RunCat365
             Action<TemperatureUnit> setTemperatureUnit,
             Func<bool> getLaunchAtStartup,
             Func<bool, bool> toggleLaunchAtStartup,
+            Action showDashboard,
             Action openProjectPage,
             Action onExit
         )
@@ -188,7 +189,10 @@ namespace RunCat365
             exitMenu.Click += (sender, e) => onExit();
 
             var contextMenuStrip = new ContextMenuStrip(new Container());
+            var dashboardMenu = new CustomToolStripMenuItem(DashboardForm.TextFor("Open"));
+            dashboardMenu.Click += (_, _) => showDashboard();
             contextMenuStrip.Items.AddRange(
+                dashboardMenu,
                 systemInfoMenu,
                 new ToolStripSeparator(),
                 runnersMenu,
@@ -206,6 +210,7 @@ namespace RunCat365
 
             notifyIcon.Visible = true;
             notifyIcon.ContextMenuStrip = contextMenuStrip;
+            notifyIcon.MouseClick += (_, e) => { if (e.Button == MouseButtons.Left) showDashboard(); };
         }
 
         private static void HandleMenuItemSelection<T>(
@@ -238,11 +243,11 @@ namespace RunCat365
 
         private static Bitmap? GetRunnerThumbnailBitmap(Theme systemTheme, Runner runner)
         {
-            var color = systemTheme.GetContrastColor();
+            var color = runner == Runner.Cat ? Color.Black : systemTheme.GetContrastColor();
             var iconName = $"{runner.GetString()}_0".ToLower();
             var obj = Resources.ResourceManager.GetObject(iconName);
             if (obj is not Bitmap bitmap) return null;
-            return systemTheme == Theme.Light ? bitmap : bitmap.Recolor(color);
+            return systemTheme == Theme.Light && runner != Runner.Cat ? bitmap : bitmap.Recolor(color);
         }
 
         private static void RefreshCustomRunnerMenu(
@@ -321,7 +326,7 @@ namespace RunCat365
                     bitmaps.Add(bitmap);
                 }
             }
-            ReplaceIconList(bitmaps, ResolveTheme(systemTheme, manualTheme));
+            ReplaceIconList(bitmaps, ResolveTheme(systemTheme, manualTheme), runner == Runner.Cat ? Color.Black : null);
         }
 
         internal void SetCustomIcons(List<Bitmap> frames, Theme systemTheme, Theme manualTheme)
@@ -339,13 +344,13 @@ namespace RunCat365
 
         internal bool HasActiveCustomIcons => customRunnerSourceFrames is not null;
 
-        private void ReplaceIconList(IList<Bitmap> frames, Theme theme)
+        private void ReplaceIconList(IList<Bitmap> frames, Theme theme, Color? fixedColor = null)
         {
-            var color = theme.GetContrastColor();
+            var color = fixedColor ?? theme.GetContrastColor();
             var list = new List<Icon>(frames.Count);
             foreach (var frame in frames)
             {
-                if (theme == Theme.Light)
+                if (theme == Theme.Light && fixedColor is null)
                 {
                     list.Add(frame.ToIcon());
                 }
@@ -465,6 +470,11 @@ namespace RunCat365
         internal void SetNotifyIconText(string text)
         {
             notifyIcon.Text = text;
+        }
+
+        internal void ShowMenu(Point location)
+        {
+            notifyIcon.ContextMenuStrip?.Show(location);
         }
 
         internal void HideNotifyIcon()

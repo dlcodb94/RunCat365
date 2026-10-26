@@ -6,6 +6,7 @@ obj/
 [Ll]ogs/
 .DS_Store
 TestResults
+artifacts/
 
 /WapForStore/AppPackages/**
 !/WapForStore/AppPackages/rm-wap-for-store.sh
